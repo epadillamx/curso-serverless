@@ -1,0 +1,99 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: apilynk
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: sls-app
+frameworkVersion: "4"
+
+provider:
+  name: aws
+  #runtime: nodejs20.x
+  stage: ${opt:stage, 'dev'}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action: 'dynamodb:*'
+          Resource: arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/user-ws-${self:provider.stage}
+
+  environment:
+    STAGE: ${self:provider.stage}
+    TABLA_USUARIOS: user-ws-${self:provider.stage}
+
+package:
+    individually: true
+    patterns:
+      - "!*/**"
+
+
+
+functions:
+  create-users:
+    runtime: nodejs20.x
+    handler: createUsers/handler.create
+    package:
+      patterns:
+        - "createUsers/handler.js"
+    events:
+      - httpApi:
+          path: /user
+          method: POST
+
+  update-users:
+    runtime: nodejs20.x
+    handler: updateUsers/handler.update
+    package:
+      patterns:
+        - "updateUsers/handler.js"
+    events:
+      - httpApi:
+          path: /user
+          method: PUT
+  
+
+  delete-users:
+    runtime: nodejs20.x
+    handler: deleteUsers/handler.deleteitem
+    package:
+      patterns:
+        - "deleteUsers/handler.js"
+    events:
+      - httpApi:
+          path: /user
+          method: DELETE
+
+  GET-users:
+    runtime: nodejs20.x
+    handler: getUsers/handler.get
+    package:
+      patterns:
+        - "getUsers/handler.js"
+    events:
+      - httpApi:
+          path: /user
+          method: GET
+  
+
+  GET-userspy:
+    runtime: python3.13
+    handler: getUserspy/handler.get_users
+    package:
+      patterns:
+        - "getUserspy/handler.py"
+    events:
+      - httpApi:
+          path: /userpy
+          method: GET
+
+resources:
+  Resources:
+    userWs:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: user-ws-${self:provider.stage}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: email
+            KeyType: HASH
